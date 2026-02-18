@@ -61,40 +61,41 @@
       <h2>Contact Us</h2>
       <p class="hint">Fill the form and we'll get back to you.</p>
 
-      <!--
-        IMPORTANT:
-        - Replace FORM_ENDPOINT with your Getform/Basin/Formspree endpoint (HTTPS).
-        - The provider records metadata (IP, UA). We also add client-side metadata.
-      -->
-      <form id="contactForm" action="https://forminit.com/f/pug60ybqrgg" method="POST" novalidate>
-        <label for="name">Name</label>
-        <input id="name" name="name" type="text" required />
+      <!-- Include Forminit SDK -->
+      <script src="https://forminit.com/sdk/v1/forminit.js"></script>
 
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required />
-
-        <label for="phone">Phone</label>
-        <input id="phone" name="phone" type="text" />
-
-        <label for="message">Message</label>
-        <textarea id="message" name="message" rows="6" required></textarea>
-
-        <!-- client-side meta: timestamp/page/user agent -->
-        <input type="hidden" name="submitted_at" id="submitted_at" />
-        <input type="hidden" name="page_url" id="page_url" />
-        <input type="hidden" name="user_agent" id="user_agent" />
-
-        <!-- honeypot (bots fill this) -->
-        <div class="hp" aria-hidden="true">
-          <label>Website (leave empty)</label>
-          <input name="website" tabindex="-1" autocomplete="off" />
-        </div>
-
-        <div style="display:flex;gap:10px;align-items:center">
-          <button type="submit">Send</button>
-          <div id="formMsg" class="hint" aria-live="polite"></div>
-        </div>
+      <!-- Your Form -->
+      <form id="contact-form">
+        <input type="text" name="fi-sender-firstName" placeholder="First Name" required />
+        <input type="text" name="fi-sender-lastName" placeholder="Last Name" required />
+        <input type="email" name="fi-sender-email" placeholder="Email" required />
+        <textarea name="fi-text-message" placeholder="Message" required></textarea>
+        <button type="submit">Submit</button>
       </form>
+
+      <div id="result"></div>
+      
+      <script>
+        const forminit = new Forminit();
+        const FORM_ID = "pug60ybqrgg";
+      
+        document.getElementById("contact-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          
+          const formData = new FormData(e.target);
+          const { data, error } = await forminit.submit(FORM_ID, formData);
+      
+          const result = document.getElementById("result");
+          
+          if (error) {
+            result.textContent = error.message;
+            return;
+          }
+      
+          result.textContent = "Message sent successfully!";
+          e.target.reset();
+        });
+      </script>
 
       <p class="hint" style="margin-top:12px">We log submission metadata to help filter spam (IP collected by provider).</p>
     </section>
@@ -124,44 +125,6 @@
       });
     });
     show(location.hash || '#home');
-
-    // anti-spam / metadata
-    (function(){
-      const form = document.getElementById('contactForm');
-      const msg = document.getElementById('formMsg');
-
-      // fill hidden meta fields
-      document.getElementById('submitted_at').value = new Date().toISOString();
-      document.getElementById('page_url').value = location.href;
-      document.getElementById('user_agent').value = navigator.userAgent;
-
-      // client-side throttling: prevent spamming same browser quickly
-      const LAST_KEY = 'acme_last_submit';
-      form.addEventListener('submit', function(ev){
-        const hp = form.querySelector('[name="website"]').value;
-        if(hp){ // honeypot filled
-          ev.preventDefault();
-          msg.textContent = 'Bot detected.';
-          return;
-        }
-        const last = localStorage.getItem(LAST_KEY);
-        const now = Date.now();
-        if(last && now - last < 10_000){ // 10 seconds throttle
-          ev.preventDefault();
-          msg.textContent = 'Please wait before submitting again.';
-          return;
-        }
-        localStorage.setItem(LAST_KEY, now.toString());
-        msg.textContent = 'Sending...';
-        // allow normal post to provider
-        // provider will redirect to success page; if you want AJAX, implement fetch to endpoint.
-      });
-
-      // optional: do basic client-side validation improvements
-      form.querySelectorAll('input[required],textarea[required]').forEach(el=>{
-        el.addEventListener('invalid', ()=> el.classList.add('invalid'));
-      });
-    })();
   </script>
 </body>
 </html>
