@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Acme Firm — Business Card</title>
+  <meta name="description" content="Acme Firm — contact & info" />
+  <style>
+    /* Minimal, designer will replace later */
+    :root{--bg:#fff;--fg:#111;--accent:#0077cc;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid #eee}
+    nav a{margin:0 8px;text-decoration:none;color:var(--fg);font-weight:600}
+    main{padding:36px;max-width:900px;margin:0 auto}
+    section{display:none}
+    section.active{display:block}
+    .card{border-radius:12px;padding:24px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+    form{display:grid;gap:12px;max-width:640px}
+    label{font-size:13px}
+    input[type="text"],input[type="email"],textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box}
+    button{padding:10px 14px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    .hint{font-size:13px;color:#666}
+    /* honeypot off-screen */
+    .hp {position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+    footer{padding:20px;text-align:center;color:#888;font-size:13px}
+    .navbrand{font-weight:700}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="navbrand">Acme Firm</div>
+    <nav>
+      <a href="#home" data-link>Home</a>
+      <a href="#about" data-link>About</a>
+      <a href="#services" data-link>Services</a>
+      <a href="#contact" data-link>Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="active card">
+      <h1>Acme Firm</h1>
+      <p class="hint">A compact online business card. Replace copy / styles with design assets.</p>
+    </section>
+
+    <section id="about" class="card">
+      <h2>About</h2>
+      <p>Short company blurb. Add more sections as needed.</p>
+    </section>
+
+    <section id="services" class="card">
+      <h2>Services</h2>
+      <ul>
+        <li>Consulting</li>
+        <li>Implementation</li>
+        <li>Support</li>
+      </ul>
+    </section>
+
+    <section id="contact" class="card">
+      <h2>Contact Us</h2>
+      <p class="hint">Fill the form and we'll get back to you.</p>
+
+      <!--
+        IMPORTANT:
+        - Replace FORM_ENDPOINT with your Getform/Basin/Formspree endpoint (HTTPS).
+        - The provider records metadata (IP, UA). We also add client-side metadata.
+      -->
+      <form id="contactForm" action="https://getform.io/f/FORM_ENDPOINT" method="POST" novalidate>
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required />
+
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required />
+
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="text" />
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="6" required></textarea>
+
+        <!-- client-side meta: timestamp/page/user agent -->
+        <input type="hidden" name="submitted_at" id="submitted_at" />
+        <input type="hidden" name="page_url" id="page_url" />
+        <input type="hidden" name="user_agent" id="user_agent" />
+
+        <!-- honeypot (bots fill this) -->
+        <div class="hp" aria-hidden="true">
+          <label>Website (leave empty)</label>
+          <input name="website" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center">
+          <button type="submit">Send</button>
+          <div id="formMsg" class="hint" aria-live="polite"></div>
+        </div>
+      </form>
+
+      <p class="hint" style="margin-top:12px">We log submission metadata to help filter spam (IP collected by provider).</p>
+    </section>
+  </main>
+
+  <footer>
+    © Acme Firm — <a href="#privacy" data-link>Privacy</a>
+  </footer>
+
+  <script>
+    // tiny client-side router (hash)
+    const sections = document.querySelectorAll('main section');
+    function show(hash) {
+      const id = (hash || '#home').replace('#','');
+      sections.forEach(s => s.classList.toggle('active', s.id === id));
+      window.scrollTo(0,0);
+    }
+    window.addEventListener('hashchange', ()=> show(location.hash));
+    document.querySelectorAll('[data-link]').forEach(a=>{
+      a.addEventListener('click', ev => {
+        // let hash link navigate normally
+      });
+    });
+    show(location.hash || '#home');
+
+    // anti-spam / metadata
+    (function(){
+      const form = document.getElementById('contactForm');
+      const msg = document.getElementById('formMsg');
+
+      // fill hidden meta fields
+      document.getElementById('submitted_at').value = new Date().toISOString();
+      document.getElementById('page_url').value = location.href;
+      document.getElementById('user_agent').value = navigator.userAgent;
+
+      // client-side throttling: prevent spamming same browser quickly
+      const LAST_KEY = 'acme_last_submit';
+      form.addEventListener('submit', function(ev){
+        const hp = form.querySelector('[name="website"]').value;
+        if(hp){ // honeypot filled
+          ev.preventDefault();
+          msg.textContent = 'Bot detected.';
+          return;
+        }
+        const last = localStorage.getItem(LAST_KEY);
+        const now = Date.now();
+        if(last && now - last < 10_000){ // 10 seconds throttle
+          ev.preventDefault();
+          msg.textContent = 'Please wait before submitting again.';
+          return;
+        }
+        localStorage.setItem(LAST_KEY, now.toString());
+        msg.textContent = 'Sending...';
+        // allow normal post to provider
+        // provider will redirect to success page; if you want AJAX, implement fetch to endpoint.
+      });
+
+      // optional: do basic client-side validation improvements
+      form.querySelectorAll('input[required],textarea[required]').forEach(el=>{
+        el.addEventListener('invalid', ()=> el.classList.add('invalid'));
+      });
+    })();
+  </script>
+</body>
+</html>
